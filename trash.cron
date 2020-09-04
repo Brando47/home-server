@@ -1,0 +1,85 @@
+#!/bin/bash
+#cron job to remove any files/directories from DIRECTORIES if they have been in their .trash folder for DAYS_TO_DELETION days
+#will create and rely on a log file(s) within DIRECTORIES
+#TODO: use sql db to track files instead of plaintext log file
+
+DAYS_TO_DELETION=7
+
+DIRECTORIES='~/.trash
+/media/video/.trash'
+
+LOG_MAX_LINE_LENGTH=100
+
+#function for days since date given by the given line of log file (of the form date +%F)
+days_since () {
+        echo $(( ($(date +%s) - $(date -d "$(echo $1 | cut -c1-10)" +%s))/86400 ))
+}
+
+#loop over each trash directory
+IFS='
+'
+for DIRECTORY in $DIRECTORIES
+do
+
+        LOG="${DIRECTORY}/trash.log"
+        OLD_LOG="${DIRECTORY}/trash.1.log"
+
+        touch "$LOG"
+
+
+        #log management
+        if [ $(cat $LOG | wc -l) -ge $LOG_MAX_LINE_LENGTH ]
+        then
+
+                mv -f "$LOG" "$OLD_LOG" && >"$LOG"
+
+                while read -r LINE
+                do
+                        #copy any relevant days from old log into clean log
+                        [ $(days_since "$LINE") -le $DAYS_TO_DELETION ] && echo "$LINE" | tee -a "$LOG"
+                done < "$OLD_LOG"
+
+                echo "$(date +%F) Cleaned log file" | tee -a "$LOG"
+
+        fi
+
+
+        #delete any files older than DAYS_TO_DELETION
+        for FILEPATH in $(find "$DIRECTORY" -maxdepth 1 -mindepth 1)
+        do
+                ADDED_TO_LOG=false #change to true later if found in log
+                INODE="$(ls -id "$FILEPATH" | cut -d ' ' -f1)"
+                FILENAME="$(basename "$FILEPATH")"
+
+                [ "$FILENAME" == "trash.log" ] && continue
+                [ "$FILENAME" == "trash.1.log" ] && continue
+
+                #read through each line of the log file
+                while read -r LINE
+                do
+
+                        #check each line of the log file to see if the file has been added to it (extra whitespace is added to improve log formatting, removed here with tr to not confuse cut)
+                        if [ "$(echo $LINE | tr -s ' ' | cut -d ' ' -f3)" == "$INODE" ]
+                        then
+
+                                #if it's found and older than DAYS_TO_DELETION, delete it
+                                if [ $(days_since "$LINE") -ge $DAYS_TO_DELETION ]
+                                then
+                                        rm -rf "$FILEPATH" #comment out for dry run
+                                        echo "$(date +%F) REMOVED $INODE $FILENAME" | tee -a "$LOG"
+                                fi
+
+                                ADDED_TO_LOG=true
+                                continue
+
+                        fi
+
+                done < "$LOG"
+
+                #if it gets to bottom of log and hasn't been found in the log yet, add it
+                [ $ADDED_TO_LOG == false ] && echo "$(date +%F)   ADDED $INODE $FILENAME" | tee -a "$LOG"
+
+        done
+done
+
+unset IFS
