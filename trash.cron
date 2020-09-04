@@ -1,7 +1,10 @@
 #!/bin/bash
-#cron job to remove any files/directories from DIRECTORIES if they have been in their .trash folder for DAYS_TO_DELETION days
-#will create and rely on a log file(s) within DIRECTORIES
-#TODO: use sql db to track files instead of plaintext log file
+# cron job to remove any files/directories from DIRECTORIES if they have been in their .trash folder for DAYS_TO_DELETION days
+# will create and rely on a log file(s) within DIRECTORIES
+# TODO: use sql db to track files instead of plaintext log file
+
+# example cron usage (runs daily):
+# 59 23 * * * /path/to/trash.cron >> /path/to/trash.master.log 2>&1
 
 DAYS_TO_DELETION=7
 
