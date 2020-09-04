@@ -1,0 +1,20 @@
+#!/bin/bash
+# NOTE: requires 'sensors' to be installed i.e. `sudo apt install lm-sensors`
+# Designed to be run with cron, this basic script checks server temperature and sends a Pushbullet warning if it is too high
+# May require some modification, check that `sensors -u` contains 'CPUTIN' and 'Package id 0' and adjust script as necessary
+
+PUSHBULLET_ACCESS_TOKEN=
+TEMP_WARNING=80 #deg C
+
+CPUTIN_TEMP=$(sensors -u | grep -e 'CPUTIN' -A 1 | grep -oP '(?<=: )[0-9.]*(?=\.)')
+PACKAGE_TEMP=$(sensors -u | grep -e 'Package id 0' -A 1 | grep -oP '(?<=: )[0-9.]*(?=\.)')
+
+if [ $CPUTIN_TEMP -ge $TEMP_WARNING ] || [ $PACKAGE_TEMP -ge $TEMP_WARNING ]
+then
+	
+	CPUTIN_TEMP=$(sensors -u | grep -e 'CPUTIN' -A 1 | grep -oP '(?<=: )[0-9.]*')
+	PACKAGE_TEMP=$(sensors -u | grep -e 'Package id 0' -A 1 | grep -oP '(?<=: )[0-9.]*')
+	
+	curl -u "$PUSHBULLET_ACCESS_TOKEN": -X POST https://api.pushbullet.com/v2/pushes -H 'Content-Type: application/json' -d "{ \"type\":\"note\", \"title\":\"SERVER HIGH TEMPERATURE WARNING\", \"body\":\"CPUTIN = ${CPUTIN_TEMP}\nPACKAGE TEMP = ${PACKAGE_TEMP}\"}"
+	
+fi
