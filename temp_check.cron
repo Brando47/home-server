@@ -3,6 +3,9 @@
 # Designed to be run with cron, this basic script checks server temperature and sends a Pushbullet warning if it is too high
 # May require some modification, check that `sensors -u` contains 'CPUTIN' and 'Package id 0' and adjust script as necessary
 
+#example cron entry (check every 30 minutes):
+# */30 * * * * /path/to/temp_check.cron
+
 PUSHBULLET_ACCESS_TOKEN=
 TEMP_WARNING=80 #deg C
 
